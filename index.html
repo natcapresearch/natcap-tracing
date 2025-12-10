@@ -1,1 +1,674 @@
-Hello world.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Natcap Commodity Tracing</title>
+
+  <!-- Leaflet CSS -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <style>
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  /* Remove click/focus rectangle on polygons */
+  .leaflet-interactive:focus,
+  .leaflet-interactive:focus-visible {
+    outline: none;
+  }
+
+  #app {
+    display: flex;
+    height: 100%;
+    width: 100%;
+  }
+
+  /* --- SIDEBAR WITH NATCAP BRANDING --- */
+  #sidebar {
+    width: 260px;
+    padding: 1rem;
+    box-sizing: border-box;
+    border-right: 1px solid #ddd;
+
+    /* Natcap colours */
+    background: #00412B;      /* primary */
+    color: #ffffff;           /* white text */
+  }
+
+  #sidebar h1 {
+    color: #ffffff;
+  }
+
+  #sidebar p {
+    color: #e8f5f3;
+  }
+
+  #sidebar label {
+    color: #ffffff;
+  }
+
+  #sidebar fieldset {
+    border: 1px solid #1A8289;   /* secondary outline */
+    background: rgba(255,255,255,0.05);
+    margin-top: 0.75rem;
+  }
+
+  #sidebar fieldset legend {
+    color: #ffffff;
+  }
+
+  #sidebar input[type="radio"] {
+    accent-color: #1A8289;      /* secondary teal tint */
+  }
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin-bottom: 0.75rem;
+  }
+
+  #logo {
+    max-width: 160px;
+    height: auto;
+    display: block;
+    /* Remove this if you want the original logo colours */
+    filter: brightness(0) invert(1);
+  }
+
+  /* --- Commodity selector styling --- */
+  .control-group {
+    margin: 0.75rem 0 0.25rem 0;
+  }
+
+
+
+  .select-wrapper {
+    position: relative;
+  }
+
+  #sidebar select#commodity-select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.5rem 2rem 0.5rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid #1A8289;
+    background-color: rgba(0, 65, 43, 0.85);
+    color: #ffffff;
+    font-size: 0.9rem;
+
+    /* Remove default arrow / styling */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+
+    outline: none;
+    cursor: pointer;
+  }
+
+  #sidebar select#commodity-select:focus {
+    border-color: #4EA5AB;
+    box-shadow: 0 0 0 2px rgba(78, 165, 171, 0.4);
+  }
+
+  .select-wrapper::after {
+    content: "▾";
+    position: absolute;
+    right: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: #C7E5E7;
+    pointer-events: none;
+  }
+
+  /* MAP AREA */
+  #map-container {
+    position: relative;
+    flex: 1;
+  }
+
+  #map {
+    height: 100%;
+    width: 100%;
+  }
+
+  /* Legend */
+  .info.legend {
+    padding: 6px 8px;
+    font: 12px/14px Arial, Helvetica, sans-serif;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+  }
+
+  .info.legend .title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    display: block;
+  }
+
+  .info.legend .gradient-bar {
+    width: 140px;
+    height: 12px;
+    border-radius: 4px;
+    margin: 4px 0 2px 0;
+    border: 1px solid rgba(0,0,0,0.2);
+  }
+
+  .info.legend .range-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .info.legend .range-labels span {
+    color: #333;
+  }
+
+  /* Loading overlay */
+  #loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: 1000;
+    font-size: 0.95rem;
+    color: #333;
+  }
+
+  #loading-overlay.hidden {
+    display: none;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 3px solid #ddd;
+    border-top-color: #00412B; /* Natcap primary for spinner only */
+    animation: spin 0.9s linear infinite;
+    margin-bottom: 0.5rem;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* --- Natcap-styled tooltips on hover --- */
+  .leaflet-tooltip {
+    background: #00412B;
+    color: #ffffff;
+    border: 1px solid #1A8289;
+    border-radius: 4px;
+    padding: 4px 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  }
+
+  .leaflet-tooltip strong {
+    color: #ffffff;
+  }
+  </style>
+
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="logo-container">
+      <img src="logo.webp" alt="Natcap logo" id="logo" />
+    </div>
+
+    <h1>Commodity Tracing Map</h1>
+    <p>Select a commodity and geography level to view production locations.</p>
+
+    <div class="control-group">
+      <label for="commodity-select" class="control-label">Commodity</label>
+      <div class="select-wrapper">
+        <select id="commodity-select">
+          <!-- Options will be populated dynamically based on data + URL filter -->
+        </select>
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>Admin level</legend>
+      <label>
+        <input type="radio" name="admin-level" value="admin0" checked />
+        Country
+      </label>
+      <label>
+        <input type="radio" name="admin-level" value="admin1" />
+        Region
+      </label>
+    </fieldset>
+  </div>
+
+  <div id="map-container">
+    <div id="map"></div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <div>Tracing commodities…</div>
+    </div>
+  </div>
+</div>
+
+<!-- Leaflet JS -->
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+
+<script>
+  // --- Formatting helpers ---------------------------------------------------
+  const areaFormatter = new Intl.NumberFormat("en-GB", {
+    maximumFractionDigits: 2
+  });
+
+  const rankFormatter = new Intl.NumberFormat("en-GB", {
+    maximumFractionDigits: 0
+  });
+
+  function formatArea(value) {
+    if (typeof value !== "number" || !isFinite(value)) return "N/A";
+    return areaFormatter.format(value);
+  }
+
+  function formatRank(value) {
+    if (typeof value !== "number" || !isFinite(value)) return "N/A";
+    return rankFormatter.format(value);
+  }
+
+  function toNumber(raw) {
+    if (typeof raw === "number") return raw;
+    if (typeof raw === "string") {
+      const v = parseFloat(raw);
+      return Number.isFinite(v) ? v : null;
+    }
+    return null;
+  }
+
+  // Same 10-colour Natcap palette as used in the Python generator (light → dark)
+  const PALETTE_10 = [
+    "#E3F3F4",
+    "#C7E5E7",
+    "#A9D6D8",
+    "#8BC7C9",
+    "#6DB9BB",
+    "#4EA5AB",
+    "#2F8E92",
+    "#1A8289",
+    "#0B6B5C",
+    "#00412B"
+  ];
+
+  // --- Commodity detection & URL filter ------------------------------------
+
+  // Detect commodities from GeoJSON:
+  // Looks for properties.commodities and unions all keys.
+  function detectCommoditiesFromGeoJSON(geojson) {
+    const commodities = new Set();
+    if (!geojson || !Array.isArray(geojson.features)) return [];
+
+    for (const feature of geojson.features) {
+      const props = feature.properties || {};
+      const comm = props.commodities;
+      if (comm && typeof comm === "object") {
+        for (const key of Object.keys(comm)) {
+          commodities.add(key);
+        }
+      }
+    }
+    return [...commodities].sort();
+  }
+
+  // Decode URL filter:
+  // ?c=<semicolon-separated commodity names>
+  // e.g. ?c=abaca;areca;Oil%20palm
+  function decodeCommodityFilter(allCommodities) {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("c");
+
+    if (!raw) {
+      // No parameter → use all commodities
+      return [...allCommodities];
+    }
+
+    const parts = raw
+      .split(";")
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (!parts.length) {
+      return [...allCommodities];
+    }
+
+    const requested = new Set(parts);
+    const filtered = allCommodities.filter(c => requested.has(c));
+
+    return filtered.length ? filtered : [...allCommodities];
+  }
+
+  // Convenience: get commodity record from a feature
+  function getCommodityRecord(feature, commodityName) {
+    if (!feature || !feature.properties) return null;
+    const comm = feature.properties.commodities;
+    if (!comm || typeof comm !== "object") return null;
+    const rec = comm[commodityName];
+    if (!rec || typeof rec !== "object") return null;
+    return rec;
+  }
+
+  // --- Map setup ------------------------------------------------------------
+  const map = L.map("map").setView([20, 0], 2);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const loadingOverlay = document.getElementById("loading-overlay");
+  const selectEl = document.getElementById("commodity-select");
+
+  // State
+  let allCommodities = [];
+  let allowedCommodities = [];
+  let currentCommodity = null;
+
+  let currentAdminLevel = "admin0"; // "admin0" or "admin1"
+  let geoLayer = null;
+
+  // Store data & bounds per admin level
+  const dataByAdmin = {
+    admin0: null,
+    admin1: null
+  };
+  const boundsByAdmin = {
+    admin0: null,
+    admin1: null
+  };
+
+  let initialFitDone = false;
+
+  function hideLoading() {
+    if (loadingOverlay) {
+      loadingOverlay.classList.add("hidden");
+    }
+  }
+
+  function showLoadingError(message) {
+    if (loadingOverlay) {
+      loadingOverlay.innerHTML =
+        `<div style="color:#b00020; font-weight:600; margin-bottom:0.25rem;">Error loading data</div>` +
+        `<div style="font-size:0.85rem;">${message}</div>`;
+    }
+  }
+
+  function populateCommoditySelect() {
+    selectEl.innerHTML = "";
+    allowedCommodities.forEach(key => {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = key;   // display exactly as in the data
+      selectEl.appendChild(option);
+    });
+
+    if (!currentCommodity || !allowedCommodities.includes(currentCommodity)) {
+      currentCommodity = allowedCommodities[0] || null;
+    }
+    if (currentCommodity) {
+      selectEl.value = currentCommodity;
+    }
+  }
+
+  // --- Use colour from GeoJSON ---------------------------------------------
+  function getFillColor(feature) {
+    const rec = getCommodityRecord(feature, currentCommodity);
+    if (!rec) return "#F4FBFB";
+    const col = rec.colour;
+    if (typeof col === "string" && col.trim().length > 0) {
+      return col;
+    }
+    // Fallback if colour missing
+    return "#F4FBFB";
+  }
+
+  // Style for each feature (only called for features that pass the filter)
+  function styleFeature(feature) {
+    return {
+      fillColor: getFillColor(feature),
+      weight: 1,
+      opacity: 1,
+      color: "#00412B",  // primary as outline
+      dashArray: "",
+      fillOpacity: 0.8
+    };
+  }
+
+  // Only keep features that have a commodity record with a colour
+  function featureFilter(feature) {
+    const rec = getCommodityRecord(feature, currentCommodity);
+    if (!rec) return false;
+    if (!rec.colour || typeof rec.colour !== "string") return false;
+    return true;
+  }
+
+  // Tooltip / interaction (only called for filtered-in features)
+  function onEachFeature(feature, layer) {
+    layer.bindTooltip(function (layerInstance) {
+      const props = layerInstance.feature.properties || {};
+      // Try NAME_EN first, fall back to other common variants if needed
+      const name =
+        props.NAME_EN ||
+        props.NAME_1 ||
+        props.name_en ||
+        props.NAME ||
+        "Unknown";
+
+      const rec = getCommodityRecord(layerInstance.feature, currentCommodity);
+
+      if (!rec) {
+        return `
+          <strong>${name}</strong><br/>
+          No data
+        `;
+      }
+
+      const areaNum = toNumber(rec.area);
+      const countryRankNum = toNumber(rec.country_rank);
+      const withinCountryNum = toNumber(rec.rank_in_country);
+
+      if (currentAdminLevel === "admin1") {
+        // Regions: show Country Rank, Rank within country, Area
+        return `
+          <strong>${name}</strong><br/>
+          Country Rank: ${formatRank(countryRankNum)}<br/>
+          Rank within country: ${formatRank(withinCountryNum)}<br/>
+          Area: ${formatArea(areaNum)} ha
+        `;
+      } else {
+        // Countries: show Country Rank, Area (no within-country rank)
+        return `
+          <strong>${name}</strong><br/>
+          Country Rank: ${formatRank(countryRankNum)}<br/>
+          Area: ${formatArea(areaNum)} ha
+        `;
+      }
+    });
+
+    layer.on({
+      mouseover: function (e) {
+        const target = e.target;
+        target.setStyle({
+          weight: 2,
+          color: "#1A8289",  // secondary on hover
+          fillOpacity: 0.9
+        });
+        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+          target.bringToFront();
+        }
+      },
+      mouseout: function (e) {
+        if (geoLayer) {
+          geoLayer.resetStyle(e.target);
+        }
+      }
+    });
+  }
+
+  // --- Legend ---------------------------------------------------------------
+  const legend = L.control({ position: "bottomright" });
+
+  function updateLegendHtml(container) {
+    container.innerHTML = "";
+
+    if (!currentCommodity) {
+      const title = document.createElement("span");
+      title.className = "title";
+      title.textContent = "No data";
+      container.appendChild(title);
+      return;
+    }
+
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = `Production rank – ${currentCommodity}`;
+    container.appendChild(title);
+
+    const gradientBar = document.createElement("div");
+    gradientBar.className = "gradient-bar";
+    gradientBar.style.background = `linear-gradient(to right, ${PALETTE_10.join(",")})`;
+    container.appendChild(gradientBar);
+
+    const labels = document.createElement("div");
+    labels.className = "range-labels";
+
+    const low = document.createElement("span");
+    const high = document.createElement("span");
+
+    low.textContent = "Lowest";
+    high.textContent = "Highest";
+
+    labels.appendChild(low);
+    labels.appendChild(high);
+    container.appendChild(labels);
+  }
+
+  legend.onAdd = function () {
+    const div = L.DomUtil.create("div", "info legend");
+    updateLegendHtml(div);
+    return div;
+  };
+
+  legend.addTo(map);
+
+  function refreshLegend() {
+    const div = document.querySelector(".info.legend");
+    if (div) updateLegendHtml(div);
+  }
+
+  // --- Build (or rebuild) the layer for the current commodity/admin --------
+  function buildLayer() {
+    const data = dataByAdmin[currentAdminLevel];
+    if (!data || !currentCommodity) return;
+
+    if (geoLayer) {
+      map.removeLayer(geoLayer);
+    }
+
+    geoLayer = L.geoJSON(data, {
+      style: styleFeature,
+      onEachFeature: onEachFeature,
+      filter: featureFilter
+    }).addTo(map);
+  }
+
+  // --- Load both GeoJSONs (admin0 + admin1) ---------------------------------
+  Promise.all([
+    fetch("data_admin0.geojson").then(r => {
+      if (!r.ok) throw new Error("Failed to load data_admin0.geojson");
+      return r.json();
+    }),
+    fetch("data_admin1.geojson").then(r => {
+      if (!r.ok) throw new Error("Failed to load data_admin1.geojson");
+      return r.json();
+    })
+  ])
+    .then(([dataAdmin0, dataAdmin1]) => {
+      dataByAdmin.admin0 = dataAdmin0;
+      dataByAdmin.admin1 = dataAdmin1;
+
+      // --- Detect commodities from data (using admin0 as reference) ---
+      allCommodities = detectCommoditiesFromGeoJSON(dataAdmin0);
+      if (!allCommodities.length) {
+        throw new Error("No commodities detected in data.");
+      }
+
+      // Apply URL filter (if any, semicolon-separated)
+      allowedCommodities = decodeCommodityFilter(allCommodities);
+      if (!allowedCommodities.length) {
+        throw new Error("No allowed commodities after URL filter.");
+      }
+
+      // Populate dropdown and set currentCommodity
+      populateCommoditySelect();
+
+      // Precompute bounds for each level
+      const tmp0 = L.geoJSON(dataAdmin0);
+      boundsByAdmin.admin0 = tmp0.getBounds();
+
+      const tmp1 = L.geoJSON(dataAdmin1);
+      boundsByAdmin.admin1 = tmp1.getBounds();
+
+      // Initial layer: admin0
+      currentAdminLevel = "admin0";
+      buildLayer();
+
+      // Fit to admin0 extent once on initial load
+      if (!initialFitDone && boundsByAdmin.admin0 && boundsByAdmin.admin0.isValid()) {
+        map.fitBounds(boundsByAdmin.admin0);
+        initialFitDone = true;
+      }
+
+      refreshLegend();
+      hideLoading();
+    })
+    .catch(error => {
+      console.error(error);
+      showLoadingError(error.message);
+      alert("Error loading GeoJSON: " + error.message);
+    });
+
+  // --- Commodity selector wiring -------------------------------------------
+  selectEl.addEventListener("change", (event) => {
+    currentCommodity = event.target.value;
+    buildLayer();
+    refreshLegend();
+  });
+
+  // --- Admin-level radio wiring --------------------------------------------
+  const adminRadios = document.querySelectorAll('input[name="admin-level"]');
+  adminRadios.forEach(radio => {
+    radio.addEventListener("change", (event) => {
+      if (!event.target.checked) return;
+      currentAdminLevel = event.target.value; // "admin0" or "admin1"
+      buildLayer();
+      // No fitBounds here: keep current zoom / center
+    });
+  });
+</script>
+</body>
+</html>
