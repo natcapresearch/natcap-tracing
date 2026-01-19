@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>Natcap Commodity Tracing</title>
 
-  <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -19,7 +18,6 @@
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
-  /* Remove click/focus rectangle on polygons */
   .leaflet-interactive:focus,
   .leaflet-interactive:focus-visible {
     outline: none;
@@ -31,43 +29,27 @@
     width: 100%;
   }
 
-  /* --- SIDEBAR WITH NATCAP BRANDING --- */
   #sidebar {
     width: 260px;
     padding: 1rem;
     box-sizing: border-box;
     border-right: 1px solid #ddd;
-
-    /* Natcap colours */
-    background: #00412B;      /* primary */
-    color: #ffffff;           /* white text */
-  }
-
-  #sidebar h1 {
+    background: #00412B;
     color: #ffffff;
   }
 
-  #sidebar p {
-    color: #e8f5f3;
-  }
-
-  #sidebar label {
-    color: #ffffff;
-  }
+  #sidebar h1 { color: #ffffff; }
+  #sidebar p { color: #e8f5f3; }
+  #sidebar label { color: #ffffff; }
 
   #sidebar fieldset {
-    border: 1px solid #1A8289;   /* secondary outline */
+    border: 1px solid #1A8289;
     background: rgba(255,255,255,0.05);
     margin-top: 0.75rem;
   }
 
-  #sidebar fieldset legend {
-    color: #ffffff;
-  }
-
-  #sidebar input[type="radio"] {
-    accent-color: #1A8289;      /* secondary teal tint */
-  }
+  #sidebar fieldset legend { color: #ffffff; }
+  #sidebar input[type="radio"] { accent-color: #1A8289; }
 
   .logo-container {
     display: flex;
@@ -80,16 +62,12 @@
     max-width: 160px;
     height: auto;
     display: block;
-    /* Remove this if you want the original logo colours */
     filter: brightness(0) invert(1);
   }
 
-  /* --- Commodity selector styling --- */
   .control-group {
     margin: 0.75rem 0 0.25rem 0;
   }
-
-
 
   .select-wrapper {
     position: relative;
@@ -104,12 +82,9 @@
     background-color: rgba(0, 65, 43, 0.85);
     color: #ffffff;
     font-size: 0.9rem;
-
-    /* Remove default arrow / styling */
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-
     outline: none;
     cursor: pointer;
   }
@@ -130,7 +105,6 @@
     pointer-events: none;
   }
 
-  /* MAP AREA */
   #map-container {
     position: relative;
     flex: 1;
@@ -141,7 +115,6 @@
     width: 100%;
   }
 
-  /* Legend */
   .info.legend {
     padding: 6px 8px;
     font: 12px/14px Arial, Helvetica, sans-serif;
@@ -171,11 +144,8 @@
     margin-top: 2px;
   }
 
-  .info.legend .range-labels span {
-    color: #333;
-  }
+  .info.legend .range-labels span { color: #333; }
 
-  /* Loading overlay */
   #loading-overlay {
     position: absolute;
     inset: 0;
@@ -189,16 +159,14 @@
     color: #333;
   }
 
-  #loading-overlay.hidden {
-    display: none;
-  }
+  #loading-overlay.hidden { display: none; }
 
   .spinner {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     border: 3px solid #ddd;
-    border-top-color: #00412B; /* Natcap primary for spinner only */
+    border-top-color: #00412B;
     animation: spin 0.9s linear infinite;
     margin-bottom: 0.5rem;
   }
@@ -207,7 +175,6 @@
     to { transform: rotate(360deg); }
   }
 
-  /* --- Natcap-styled tooltips on hover --- */
   .leaflet-tooltip {
     background: #00412B;
     color: #ffffff;
@@ -217,12 +184,16 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.25);
   }
 
-  .leaflet-tooltip strong {
-    color: #ffffff;
+  .leaflet-tooltip strong { color: #ffffff; }
+
+  #sidebar.is-disabled {
+    opacity: 0.55;
+    pointer-events: none;
+    user-select: none;
   }
   </style>
-
 </head>
+
 <body>
 <div id="app">
   <div id="sidebar">
@@ -236,9 +207,7 @@
     <div class="control-group">
       <label for="commodity-select" class="control-label">Commodity</label>
       <div class="select-wrapper">
-        <select id="commodity-select">
-          <!-- Options will be populated dynamically based on data + URL filter -->
-        </select>
+        <select id="commodity-select"></select>
       </div>
     </div>
 
@@ -258,7 +227,6 @@
   <div id="map-container">
     <div id="map"></div>
 
-    <!-- Loading overlay -->
     <div id="loading-overlay">
       <div class="spinner"></div>
       <div>Tracing commodities…</div>
@@ -266,7 +234,6 @@
   </div>
 </div>
 
-<!-- Leaflet JS -->
 <script
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -274,14 +241,8 @@
 ></script>
 
 <script>
-  // --- Formatting helpers ---------------------------------------------------
-  const areaFormatter = new Intl.NumberFormat("en-GB", {
-    maximumFractionDigits: 2
-  });
-
-  const rankFormatter = new Intl.NumberFormat("en-GB", {
-    maximumFractionDigits: 0
-  });
+  const areaFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
+  const rankFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
 
   function formatArea(value) {
     if (typeof value !== "number" || !isFinite(value)) return "N/A";
@@ -302,7 +263,6 @@
     return null;
   }
 
-  // Same 10-colour Natcap palette as used in the Python generator (light → dark)
   const PALETTE_10 = [
     "#E3F3F4",
     "#C7E5E7",
@@ -316,54 +276,38 @@
     "#00412B"
   ];
 
-  // --- Commodity detection & URL filter ------------------------------------
-
-  // Detect commodities from GeoJSON:
-  // Looks for properties.commodities and unions all keys.
   function detectCommoditiesFromGeoJSON(geojson) {
     const commodities = new Set();
     if (!geojson || !Array.isArray(geojson.features)) return [];
-
     for (const feature of geojson.features) {
       const props = feature.properties || {};
       const comm = props.commodities;
       if (comm && typeof comm === "object") {
-        for (const key of Object.keys(comm)) {
-          commodities.add(key);
-        }
+        for (const key of Object.keys(comm)) commodities.add(key);
       }
     }
     return [...commodities].sort();
   }
 
-  // Decode URL filter:
-  // ?c=<semicolon-separated commodity names>
-  // e.g. ?c=abaca;areca;Oil%20palm
-  function decodeCommodityFilter(allCommodities) {
+  function decodeCommodityFilterOrNull(allCommodities) {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("c");
+    if (!raw) return null;
 
-    if (!raw) {
-      // No parameter → use all commodities
-      return [...allCommodities];
-    }
-
-    const parts = raw
-      .split(";")
-      .map(s => s.trim())
-      .filter(Boolean);
-
-    if (!parts.length) {
-      return [...allCommodities];
-    }
+    const parts = raw.split(";").map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return null;
 
     const requested = new Set(parts);
-    const filtered = allCommodities.filter(c => requested.has(c));
-
-    return filtered.length ? filtered : [...allCommodities];
+    for (const name of requested) {
+      if (!allCommodities.includes(name)) return null;
+    }
+    return allCommodities.filter(c => requested.has(c));
   }
 
-  // Convenience: get commodity record from a feature
+  const INVALID_LINK_MESSAGE =
+    "Please check that you have followed the link in the email you received. " +
+    "If you are still encountering issues, please e-mail support@natcapresearch.com";
+
   function getCommodityRecord(feature, commodityName) {
     if (!feature || !feature.properties) return null;
     const comm = feature.properties.commodities;
@@ -373,48 +317,55 @@
     return rec;
   }
 
-  // --- Map setup ------------------------------------------------------------
-  const map = L.map("map").setView([20, 0], 2);
+  const WORLD_BOUNDS = L.latLngBounds(L.latLng(-70, -180), L.latLng(80, 180));
+
+  const map = L.map("map", {
+    worldCopyJump: true,
+    maxBounds: WORLD_BOUNDS,
+    maxBoundsViscosity: 1.0
+  }).setView([20, 0], 2);
+
+  map.setMinZoom(map.getBoundsZoom(WORLD_BOUNDS, true));
+  map.on("resize", () => {
+    map.setMinZoom(map.getBoundsZoom(WORLD_BOUNDS, true));
+  });
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: "&copy; OpenStreetMap contributors",
+    noWrap: true
   }).addTo(map);
 
   const loadingOverlay = document.getElementById("loading-overlay");
   const selectEl = document.getElementById("commodity-select");
+  const sidebarEl = document.getElementById("sidebar");
 
-  // State
   let allCommodities = [];
   let allowedCommodities = [];
   let currentCommodity = null;
 
-  let currentAdminLevel = "admin0"; // "admin0" or "admin1"
+  let currentAdminLevel = "admin0";
   let geoLayer = null;
 
-  // Store data & bounds per admin level
-  const dataByAdmin = {
-    admin0: null,
-    admin1: null
-  };
-  const boundsByAdmin = {
-    admin0: null,
-    admin1: null
-  };
+  const dataByAdmin = { admin0: null, admin1: null };
+  const boundsByAdmin = { admin0: null, admin1: null };
 
   let initialFitDone = false;
 
   function hideLoading() {
-    if (loadingOverlay) {
-      loadingOverlay.classList.add("hidden");
-    }
+    loadingOverlay?.classList.add("hidden");
   }
 
   function showLoadingError(message) {
-    if (loadingOverlay) {
-      loadingOverlay.innerHTML =
-        `<div style="color:#b00020; font-weight:600; margin-bottom:0.25rem;">Error loading data</div>` +
-        `<div style="font-size:0.85rem;">${message}</div>`;
-    }
+    if (!loadingOverlay) return;
+    loadingOverlay.innerHTML =
+      `<div style="color:#b00020; font-weight:600; margin-bottom:0.25rem;">Error</div>` +
+      `<div style="font-size:0.85rem;">${message}</div>`;
+  }
+
+  function disableSidebar() {
+    sidebarEl?.classList.add("is-disabled");
+    selectEl.disabled = true;
+    document.querySelectorAll('input[name="admin-level"]').forEach(r => (r.disabled = true));
   }
 
   function populateCommoditySelect() {
@@ -422,43 +373,35 @@
     allowedCommodities.forEach(key => {
       const option = document.createElement("option");
       option.value = key;
-      option.textContent = key;   // display exactly as in the data
+      option.textContent = key;
       selectEl.appendChild(option);
     });
 
     if (!currentCommodity || !allowedCommodities.includes(currentCommodity)) {
       currentCommodity = allowedCommodities[0] || null;
     }
-    if (currentCommodity) {
-      selectEl.value = currentCommodity;
-    }
+    if (currentCommodity) selectEl.value = currentCommodity;
   }
 
-  // --- Use colour from GeoJSON ---------------------------------------------
   function getFillColor(feature) {
     const rec = getCommodityRecord(feature, currentCommodity);
     if (!rec) return "#F4FBFB";
     const col = rec.colour;
-    if (typeof col === "string" && col.trim().length > 0) {
-      return col;
-    }
-    // Fallback if colour missing
+    if (typeof col === "string" && col.trim().length > 0) return col;
     return "#F4FBFB";
   }
 
-  // Style for each feature (only called for features that pass the filter)
   function styleFeature(feature) {
     return {
       fillColor: getFillColor(feature),
       weight: 1,
       opacity: 1,
-      color: "#00412B",  // primary as outline
+      color: "#00412B",
       dashArray: "",
       fillOpacity: 0.8
     };
   }
 
-  // Only keep features that have a commodity record with a colour
   function featureFilter(feature) {
     const rec = getCommodityRecord(feature, currentCommodity);
     if (!rec) return false;
@@ -466,25 +409,14 @@
     return true;
   }
 
-  // Tooltip / interaction (only called for filtered-in features)
   function onEachFeature(feature, layer) {
     layer.bindTooltip(function (layerInstance) {
       const props = layerInstance.feature.properties || {};
-      // Try NAME_EN first, fall back to other common variants if needed
-      const name =
-        props.NAME_EN ||
-        props.NAME_1 ||
-        props.name_en ||
-        props.NAME ||
-        "Unknown";
-
+      const name = props.NAME_EN || props.NAME_1 || props.name_en || props.NAME || "Unknown";
       const rec = getCommodityRecord(layerInstance.feature, currentCommodity);
 
       if (!rec) {
-        return `
-          <strong>${name}</strong><br/>
-          No data
-        `;
+        return `<strong>${name}</strong><br/>No data`;
       }
 
       const areaNum = toNumber(rec.area);
@@ -492,44 +424,33 @@
       const withinCountryNum = toNumber(rec.rank_in_country);
 
       if (currentAdminLevel === "admin1") {
-        // Regions: show Country Rank, Rank within country, Area
         return `
           <strong>${name}</strong><br/>
           Country Rank: ${formatRank(countryRankNum)}<br/>
           Rank within country: ${formatRank(withinCountryNum)}<br/>
           Area: ${formatArea(areaNum)} ha
         `;
-      } else {
-        // Countries: show Country Rank, Area (no within-country rank)
-        return `
-          <strong>${name}</strong><br/>
-          Country Rank: ${formatRank(countryRankNum)}<br/>
-          Area: ${formatArea(areaNum)} ha
-        `;
       }
+
+      return `
+        <strong>${name}</strong><br/>
+        Country Rank: ${formatRank(countryRankNum)}<br/>
+        Area: ${formatArea(areaNum)} ha
+      `;
     });
 
     layer.on({
       mouseover: function (e) {
         const target = e.target;
-        target.setStyle({
-          weight: 2,
-          color: "#1A8289",  // secondary on hover
-          fillOpacity: 0.9
-        });
-        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-          target.bringToFront();
-        }
+        target.setStyle({ weight: 2, color: "#1A8289", fillOpacity: 0.9 });
+        if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) target.bringToFront();
       },
       mouseout: function (e) {
-        if (geoLayer) {
-          geoLayer.resetStyle(e.target);
-        }
+        if (geoLayer) geoLayer.resetStyle(e.target);
       }
     });
   }
 
-  // --- Legend ---------------------------------------------------------------
   const legend = L.control({ position: "bottomright" });
 
   function updateLegendHtml(container) {
@@ -580,14 +501,11 @@
     if (div) updateLegendHtml(div);
   }
 
-  // --- Build (or rebuild) the layer for the current commodity/admin --------
   function buildLayer() {
     const data = dataByAdmin[currentAdminLevel];
     if (!data || !currentCommodity) return;
 
-    if (geoLayer) {
-      map.removeLayer(geoLayer);
-    }
+    if (geoLayer) map.removeLayer(geoLayer);
 
     geoLayer = L.geoJSON(data, {
       style: styleFeature,
@@ -596,7 +514,6 @@
     }).addTo(map);
   }
 
-  // --- Load both GeoJSONs (admin0 + admin1) ---------------------------------
   Promise.all([
     fetch("data_admin0.geojson").then(r => {
       if (!r.ok) throw new Error("Failed to load data_admin0.geojson");
@@ -611,62 +528,55 @@
       dataByAdmin.admin0 = dataAdmin0;
       dataByAdmin.admin1 = dataAdmin1;
 
-      // --- Detect commodities from data (using admin0 as reference) ---
       allCommodities = detectCommoditiesFromGeoJSON(dataAdmin0);
-      if (!allCommodities.length) {
-        throw new Error("No commodities detected in data.");
+      if (!allCommodities.length) throw new Error("No commodities detected in data.");
+
+      allowedCommodities = decodeCommodityFilterOrNull(allCommodities);
+      if (!allowedCommodities || !allowedCommodities.length) {
+        disableSidebar();
+        showLoadingError(INVALID_LINK_MESSAGE);
+        return;
       }
 
-      // Apply URL filter (if any, semicolon-separated)
-      allowedCommodities = decodeCommodityFilter(allCommodities);
-      if (!allowedCommodities.length) {
-        throw new Error("No allowed commodities after URL filter.");
-      }
-
-      // Populate dropdown and set currentCommodity
       populateCommoditySelect();
 
-      // Precompute bounds for each level
       const tmp0 = L.geoJSON(dataAdmin0);
       boundsByAdmin.admin0 = tmp0.getBounds();
 
       const tmp1 = L.geoJSON(dataAdmin1);
       boundsByAdmin.admin1 = tmp1.getBounds();
 
-      // Initial layer: admin0
       currentAdminLevel = "admin0";
       buildLayer();
 
-      // Fit to admin0 extent once on initial load
       if (!initialFitDone && boundsByAdmin.admin0 && boundsByAdmin.admin0.isValid()) {
         map.fitBounds(boundsByAdmin.admin0);
+        map.panInsideBounds(WORLD_BOUNDS);
         initialFitDone = true;
       }
 
       refreshLegend();
       hideLoading();
     })
-    .catch(error => {
-      console.error(error);
-      showLoadingError(error.message);
-      alert("Error loading GeoJSON: " + error.message);
+    .catch(() => {
+      disableSidebar();
+      showLoadingError(INVALID_LINK_MESSAGE);
     });
 
-  // --- Commodity selector wiring -------------------------------------------
   selectEl.addEventListener("change", (event) => {
+    if (selectEl.disabled) return;
     currentCommodity = event.target.value;
     buildLayer();
     refreshLegend();
   });
 
-  // --- Admin-level radio wiring --------------------------------------------
   const adminRadios = document.querySelectorAll('input[name="admin-level"]');
   adminRadios.forEach(radio => {
     radio.addEventListener("change", (event) => {
       if (!event.target.checked) return;
-      currentAdminLevel = event.target.value; // "admin0" or "admin1"
+      if (event.target.disabled) return;
+      currentAdminLevel = event.target.value;
       buildLayer();
-      // No fitBounds here: keep current zoom / center
     });
   });
 </script>
