@@ -240,6 +240,8 @@
   crossorigin=""
 ></script>
 
+<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+
 <script>
   const areaFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
   const rankFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 });
@@ -409,45 +411,75 @@
     return true;
   }
 
-  function onEachFeature(feature, layer) {
-    layer.bindTooltip(function (layerInstance) {
-      const props = layerInstance.feature.properties || {};
-      const name = props.NAME_EN || props.NAME_1 || props.name_en || props.NAME || "Unknown";
-      const rec = getCommodityRecord(layerInstance.feature, currentCommodity);
+  function clampLatLngToWorld(latlng) {
+    const wrapped = latlng.wrap();
+    const south = WORLD_BOUNDS.getSouth();
+    const north = WORLD_BOUNDS.getNorth();
+    const clampedLat = Math.max(south, Math.min(north, wrapped.lat));
+    return L.latLng(clampedLat, wrapped.lng);
+  }
 
-      if (!rec) {
-        return `<strong>${name}</strong><br/>No data`;
-      }
+  function tooltipHtmlForFeature(feature) {
+    const props = feature.properties || {};
+    const name = props.NAME_EN || props.NAME_1 || props.name_en || props.NAME || "Unknown";
+    const rec = getCommodityRecord(feature, currentCommodity);
 
-      const areaNum = toNumber(rec.area);
-      const countryRankNum = toNumber(rec.country_rank);
-      const withinCountryNum = toNumber(rec.rank_in_country);
+    if (!rec) return `<strong>${name}</strong><br/>No data`;
 
-      if (currentAdminLevel === "admin1") {
-        return `
-          <strong>${name}</strong><br/>
-          Country Rank: ${formatRank(countryRankNum)}<br/>
-          Rank within country: ${formatRank(withinCountryNum)}<br/>
-          Area: ${formatArea(areaNum)} ha
-        `;
-      }
+    const areaNum = toNumber(rec.area);
+    const countryRankNum = toNumber(rec.country_rank);
+    const withinCountryNum = toNumber(rec.rank_in_country);
 
+    if (currentAdminLevel === "admin1") {
       return `
         <strong>${name}</strong><br/>
         Country Rank: ${formatRank(countryRankNum)}<br/>
+        Rank within country: ${formatRank(withinCountryNum)}<br/>
         Area: ${formatArea(areaNum)} ha
       `;
-    });
+    }
+
+    return `
+      <strong>${name}</strong><br/>
+      Country Rank: ${formatRank(countryRankNum)}<br/>
+      Area: ${formatArea(areaNum)} ha
+    `;
+  }
+
+  function onEachFeature(feature, layer) {
+    let anchorLatLng;
+    try {
+      const pt = turf.pointOnFeature(feature);
+      const [lng, lat] = pt.geometry.coordinates;
+      anchorLatLng = clampLatLngToWorld(L.latLng(lat, lng));
+    } catch {
+      anchorLatLng = clampLatLngToWorld(layer.getBounds().getCenter());
+    }
+
+    const anchor = L.circleMarker(anchorLatLng, {
+      radius: 0,
+      opacity: 0,
+      fillOpacity: 0,
+      interactive: false
+    }).addTo(map);
+
+    anchor.bindTooltip(() => tooltipHtmlForFeature(feature), { direction: "top", sticky: true });
 
     layer.on({
       mouseover: function (e) {
         const target = e.target;
         target.setStyle({ weight: 2, color: "#1A8289", fillOpacity: 0.9 });
         if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) target.bringToFront();
+        anchor.openTooltip();
       },
       mouseout: function (e) {
         if (geoLayer) geoLayer.resetStyle(e.target);
+        anchor.closeTooltip();
       }
+    });
+
+    layer.on("remove", () => {
+      map.removeLayer(anchor);
     });
   }
 
