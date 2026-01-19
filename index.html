@@ -35,6 +35,8 @@
     border-right: 1px solid #ddd;
     background: #00412B;
     color: #ffffff;
+    display: flex;
+    flex-direction: column;
   }
 
   #sidebar h1 {
@@ -137,6 +139,12 @@
     font-size: 0.7rem;
     color: #C7E5E7;
     pointer-events: none;
+  }
+
+  #sidebar-bottom {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(199, 229, 231, 0.35);
   }
 
   #map-container {
@@ -256,14 +264,6 @@
     <h1>Commodity Tracing Map</h1>
     <p>Select a commodity and geography level to view production locations.</p>
 
-    <a
-      href="https://marketing.natcapresearch.com/hubfs/Agricultural%20Commodity%20Tracing%20Tool%20Methods%20v%20Jan%202026.pdf"
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      Methodology ↗
-    </a>
-
     <div class="control-group">
       <label for="commodity-select" class="control-label">Commodity</label>
       <div class="select-wrapper">
@@ -282,6 +282,16 @@
         Region
       </label>
     </fieldset>
+
+    <div id="sidebar-bottom">
+      <a
+        href="https://marketing.natcapresearch.com/hubfs/Agricultural%20Commodity%20Tracing%20Tool%20Methods%20v%20Jan%202026.pdf"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Methodology ↗
+      </a>
+    </div>
   </div>
 
   <div id="map-container">
@@ -293,11 +303,7 @@
   </div>
 </div>
 
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  crossorigin=""
-></script>
-
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js" crossorigin=""></script>
 
 <script>
