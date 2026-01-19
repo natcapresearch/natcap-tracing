@@ -7,7 +7,6 @@
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
 
@@ -38,9 +37,30 @@
     color: #ffffff;
   }
 
-  #sidebar h1 { color: #ffffff; }
-  #sidebar p { color: #e8f5f3; }
-  #sidebar label { color: #ffffff; }
+  #sidebar h1 {
+    color: #ffffff;
+  }
+
+  #sidebar p {
+    color: #e8f5f3;
+    margin-bottom: 0.5rem;
+  }
+
+  #sidebar a {
+    color: #C7E5E7;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  #sidebar a:hover {
+    text-decoration: underline;
+    color: #ffffff;
+  }
+
+  #sidebar label {
+    color: #ffffff;
+  }
 
   #sidebar fieldset {
     border: 1px solid #1A8289;
@@ -48,8 +68,22 @@
     margin-top: 0.75rem;
   }
 
-  #sidebar fieldset legend { color: #ffffff; }
-  #sidebar input[type="radio"] { accent-color: #1A8289; }
+  #sidebar fieldset legend {
+    color: #ffffff;
+  }
+
+  #sidebar input[type="radio"] {
+    accent-color: #1A8289;
+  }
+
+  #sidebar.disabled {
+    opacity: 0.65;
+  }
+
+  #sidebar.disabled select,
+  #sidebar.disabled input {
+    cursor: not-allowed;
+  }
 
   .logo-container {
     display: flex;
@@ -144,7 +178,9 @@
     margin-top: 2px;
   }
 
-  .info.legend .range-labels span { color: #333; }
+  .info.legend .range-labels span {
+    color: #333;
+  }
 
   #loading-overlay {
     position: absolute;
@@ -153,17 +189,22 @@
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.88);
     z-index: 1000;
     font-size: 0.95rem;
     color: #333;
+    text-align: center;
+    padding: 1rem;
+    box-sizing: border-box;
   }
 
-  #loading-overlay.hidden { display: none; }
+  #loading-overlay.hidden {
+    display: none;
+  }
 
   .spinner {
     width: 32px;
-    height: 32px;
+    height:  32px;
     border-radius: 50%;
     border: 3px solid #ddd;
     border-top-color: #00412B;
@@ -175,6 +216,21 @@
     to { transform: rotate(360deg); }
   }
 
+  .overlay-error-title {
+    color: #b00020;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    margin-bottom: 0.25rem;
+  }
+
+  .overlay-error-message {
+    color: #333;
+    font-weight: 500;
+    font-size: 0.9rem;
+    max-width: 520px;
+    line-height: 1.35;
+  }
+
   .leaflet-tooltip {
     background: #00412B;
     color: #ffffff;
@@ -184,12 +240,8 @@
     box-shadow: 0 2px 4px rgba(0,0,0,0.25);
   }
 
-  .leaflet-tooltip strong { color: #ffffff; }
-
-  #sidebar.is-disabled {
-    opacity: 0.55;
-    pointer-events: none;
-    user-select: none;
+  .leaflet-tooltip strong {
+    color: #ffffff;
   }
   </style>
 </head>
@@ -203,6 +255,14 @@
 
     <h1>Commodity Tracing Map</h1>
     <p>Select a commodity and geography level to view production locations.</p>
+
+    <a
+      href="https://marketing.natcapresearch.com/hubfs/Agricultural%20Commodity%20Tracing%20Tool%20Methods%20v%20Jan%202026.pdf"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Methodology ↗
+    </a>
 
     <div class="control-group">
       <label for="commodity-select" class="control-label">Commodity</label>
@@ -226,7 +286,6 @@
 
   <div id="map-container">
     <div id="map"></div>
-
     <div id="loading-overlay">
       <div class="spinner"></div>
       <div>Tracing commodities…</div>
@@ -236,11 +295,10 @@
 
 <script
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
   crossorigin=""
 ></script>
 
-<script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js" crossorigin=""></script>
 
 <script>
   const areaFormatter = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 2 });
@@ -291,24 +349,24 @@
     return [...commodities].sort();
   }
 
-  function decodeCommodityFilterOrNull(allCommodities) {
+  function readCommodityParam() {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("c");
-    if (!raw) return null;
-
+    if (!raw) return { ok: false, requested: [] };
     const parts = raw.split(";").map(s => s.trim()).filter(Boolean);
-    if (!parts.length) return null;
-
-    const requested = new Set(parts);
-    for (const name of requested) {
-      if (!allCommodities.includes(name)) return null;
-    }
-    return allCommodities.filter(c => requested.has(c));
+    if (!parts.length) return { ok: false, requested: [] };
+    return { ok: true, requested: parts };
   }
 
-  const INVALID_LINK_MESSAGE =
-    "Please check that you have followed the link in the email you received. " +
-    "If you are still encountering issues, please e-mail support@natcapresearch.com";
+  function validateCommodityParam(allCommodities) {
+    const parsed = readCommodityParam();
+    if (!parsed.ok) return { ok: false, allowed: [], invalid: [] };
+    const allSet = new Set(allCommodities);
+    const invalid = parsed.requested.filter(x => !allSet.has(x));
+    if (invalid.length) return { ok: false, allowed: [], invalid };
+    const allowed = [...new Set(parsed.requested)];
+    return { ok: true, allowed, invalid: [] };
+  }
 
   function getCommodityRecord(feature, commodityName) {
     if (!feature || !feature.properties) return null;
@@ -319,32 +377,20 @@
     return rec;
   }
 
-  const WORLD_BOUNDS = L.latLngBounds(L.latLng(-70, -180), L.latLng(80, 180));
-
-  const map = L.map("map", {
-    worldCopyJump: true,
-    maxBounds: WORLD_BOUNDS,
-    maxBoundsViscosity: 1.0
-  }).setView([20, 0], 2);
-
-  map.setMinZoom(map.getBoundsZoom(WORLD_BOUNDS, true));
-  map.on("resize", () => {
-    map.setMinZoom(map.getBoundsZoom(WORLD_BOUNDS, true));
-  });
+  const map = L.map("map").setView([20, 0], 2);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap contributors",
-    noWrap: true
+    attribution: "&copy; OpenStreetMap contributors"
   }).addTo(map);
 
   const loadingOverlay = document.getElementById("loading-overlay");
-  const selectEl = document.getElementById("commodity-select");
   const sidebarEl = document.getElementById("sidebar");
+  const selectEl = document.getElementById("commodity-select");
+  const adminRadios = document.querySelectorAll('input[name="admin-level"]');
 
   let allCommodities = [];
   let allowedCommodities = [];
   let currentCommodity = null;
-
   let currentAdminLevel = "admin0";
   let geoLayer = null;
 
@@ -352,22 +398,33 @@
   const boundsByAdmin = { admin0: null, admin1: null };
 
   let initialFitDone = false;
+  let paramError = false;
+
+  const PARAM_ERROR_MESSAGE = "Please check that you have followed the link in the email you received. If you are still encountering issues, please e-mail support@natcapresearch.com";
 
   function hideLoading() {
-    loadingOverlay?.classList.add("hidden");
+    if (loadingOverlay) loadingOverlay.classList.add("hidden");
   }
 
-  function showLoadingError(message) {
-    if (!loadingOverlay) return;
-    loadingOverlay.innerHTML =
-      `<div style="color:#b00020; font-weight:600; margin-bottom:0.25rem;">Error</div>` +
-      `<div style="font-size:0.85rem;">${message}</div>`;
+  function showParamError(message) {
+    if (loadingOverlay) {
+      loadingOverlay.innerHTML =
+        `<div class="overlay-error-title">ERROR</div>` +
+        `<div class="overlay-error-message">${message}</div>`;
+      loadingOverlay.classList.remove("hidden");
+    }
   }
 
-  function disableSidebar() {
-    sidebarEl?.classList.add("is-disabled");
+  function disableSidebarControls() {
+    sidebarEl.classList.add("disabled");
     selectEl.disabled = true;
-    document.querySelectorAll('input[name="admin-level"]').forEach(r => (r.disabled = true));
+    adminRadios.forEach(r => { r.disabled = true; });
+  }
+
+  function enableSidebarControls() {
+    sidebarEl.classList.remove("disabled");
+    selectEl.disabled = false;
+    adminRadios.forEach(r => { r.disabled = false; });
   }
 
   function populateCommoditySelect() {
@@ -411,18 +468,16 @@
     return true;
   }
 
-  function clampLatLngToWorld(latlng) {
-    const wrapped = latlng.wrap();
-    const south = WORLD_BOUNDS.getSouth();
-    const north = WORLD_BOUNDS.getNorth();
-    const clampedLat = Math.max(south, Math.min(north, wrapped.lat));
-    return L.latLng(clampedLat, wrapped.lng);
-  }
+  function buildTooltipHtml(feature, adminLevel, commodityName) {
+    const props = (feature && feature.properties) ? feature.properties : {};
+    const name =
+      props.NAME_EN ||
+      props.NAME_1 ||
+      props.name_en ||
+      props.NAME ||
+      "Unknown";
 
-  function tooltipHtmlForFeature(feature) {
-    const props = feature.properties || {};
-    const name = props.NAME_EN || props.NAME_1 || props.name_en || props.NAME || "Unknown";
-    const rec = getCommodityRecord(feature, currentCommodity);
+    const rec = getCommodityRecord(feature, commodityName);
 
     if (!rec) return `<strong>${name}</strong><br/>No data`;
 
@@ -430,7 +485,7 @@
     const countryRankNum = toNumber(rec.country_rank);
     const withinCountryNum = toNumber(rec.rank_in_country);
 
-    if (currentAdminLevel === "admin1") {
+    if (adminLevel === "admin1") {
       return `
         <strong>${name}</strong><br/>
         Country Rank: ${formatRank(countryRankNum)}<br/>
@@ -446,40 +501,67 @@
     `;
   }
 
-  function onEachFeature(feature, layer) {
-    let anchorLatLng;
+  function stableAnchorLatLng(feature) {
     try {
-      const pt = turf.pointOnFeature(feature);
-      const [lng, lat] = pt.geometry.coordinates;
-      anchorLatLng = clampLatLngToWorld(L.latLng(lat, lng));
+      const geom = feature && feature.geometry;
+      if (!geom) return null;
+
+      const asFeature = { type: "Feature", properties: {}, geometry: geom };
+
+      if (geom.type === "Polygon") {
+        const pt = turf.pointOnFeature(asFeature);
+        const [lng, lat] = pt.geometry.coordinates;
+        return L.latLng(lat, lng);
+      }
+
+      if (geom.type === "MultiPolygon") {
+        const polys = turf.flatten(asFeature).features.filter(f => f.geometry && f.geometry.type === "Polygon");
+        if (!polys.length) return null;
+
+        let best = polys[0];
+        let bestArea = turf.area(best);
+
+        for (let i = 1; i < polys.length; i++) {
+          const a = turf.area(polys[i]);
+          if (a > bestArea) {
+            bestArea = a;
+            best = polys[i];
+          }
+        }
+
+        const pt = turf.pointOnFeature(best);
+        const [lng, lat] = pt.geometry.coordinates;
+        return L.latLng(lat, lng);
+      }
+
+      return null;
     } catch {
-      anchorLatLng = clampLatLngToWorld(layer.getBounds().getCenter());
+      return null;
     }
+  }
 
-    const anchor = L.circleMarker(anchorLatLng, {
-      radius: 0,
-      opacity: 0,
-      fillOpacity: 0,
-      interactive: false
-    }).addTo(map);
-
-    anchor.bindTooltip(() => tooltipHtmlForFeature(feature), { direction: "top", sticky: true });
+  function onEachFeature(feature, layer) {
+    layer.bindTooltip(
+      () => buildTooltipHtml(layer.feature, currentAdminLevel, currentCommodity),
+      { sticky: false, direction: "top", opacity: 0.95 }
+    );
 
     layer.on({
       mouseover: function (e) {
         const target = e.target;
         target.setStyle({ weight: 2, color: "#1A8289", fillOpacity: 0.9 });
         if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) target.bringToFront();
-        anchor.openTooltip();
+
+        if (!target._stableTooltipAnchor) {
+          target._stableTooltipAnchor = stableAnchorLatLng(target.feature) || e.latlng;
+        }
+        target.openTooltip(target._stableTooltipAnchor);
       },
       mouseout: function (e) {
-        if (geoLayer) geoLayer.resetStyle(e.target);
-        anchor.closeTooltip();
+        const target = e.target;
+        if (geoLayer) geoLayer.resetStyle(target);
+        target.closeTooltip();
       }
-    });
-
-    layer.on("remove", () => {
-      map.removeLayer(anchor);
     });
   }
 
@@ -563,13 +645,21 @@
       allCommodities = detectCommoditiesFromGeoJSON(dataAdmin0);
       if (!allCommodities.length) throw new Error("No commodities detected in data.");
 
-      allowedCommodities = decodeCommodityFilterOrNull(allCommodities);
-      if (!allowedCommodities || !allowedCommodities.length) {
-        disableSidebar();
-        showLoadingError(INVALID_LINK_MESSAGE);
+      const validation = validateCommodityParam(allCommodities);
+      if (!validation.ok) {
+        paramError = true;
+        allowedCommodities = [];
+        currentCommodity = null;
+        populateCommoditySelect();
+        disableSidebarControls();
+        showParamError(PARAM_ERROR_MESSAGE);
+        refreshLegend();
         return;
       }
 
+      paramError = false;
+      allowedCommodities = validation.allowed;
+      enableSidebarControls();
       populateCommoditySelect();
 
       const tmp0 = L.geoJSON(dataAdmin0);
@@ -583,30 +673,33 @@
 
       if (!initialFitDone && boundsByAdmin.admin0 && boundsByAdmin.admin0.isValid()) {
         map.fitBounds(boundsByAdmin.admin0);
-        map.panInsideBounds(WORLD_BOUNDS);
         initialFitDone = true;
       }
 
       refreshLegend();
       hideLoading();
     })
-    .catch(() => {
-      disableSidebar();
-      showLoadingError(INVALID_LINK_MESSAGE);
+    .catch(error => {
+      console.error(error);
+      if (loadingOverlay) {
+        loadingOverlay.innerHTML =
+          `<div class="overlay-error-title">ERROR</div>` +
+          `<div class="overlay-error-message">${error.message}</div>`;
+      }
+      alert("Error loading GeoJSON: " + error.message);
     });
 
   selectEl.addEventListener("change", (event) => {
-    if (selectEl.disabled) return;
+    if (paramError) return;
     currentCommodity = event.target.value;
     buildLayer();
     refreshLegend();
   });
 
-  const adminRadios = document.querySelectorAll('input[name="admin-level"]');
   adminRadios.forEach(radio => {
     radio.addEventListener("change", (event) => {
+      if (paramError) return;
       if (!event.target.checked) return;
-      if (event.target.disabled) return;
       currentAdminLevel = event.target.value;
       buildLayer();
     });
