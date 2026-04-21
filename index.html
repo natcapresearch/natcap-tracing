@@ -364,7 +364,13 @@
     return { ok: true, requested: parts };
   }
 
+  function isWorkshopMode() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("t") === "workshop";
+  }
+
   function validateCommodityParam(allCommodities) {
+    if (isWorkshopMode()) return { ok: true, allowed: [...allCommodities], invalid: [] };
     const parsed = readCommodityParam();
     if (!parsed.ok) return { ok: false, allowed: [], invalid: [] };
     const allSet = new Set(allCommodities);
