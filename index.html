@@ -366,7 +366,7 @@
 
   function isWorkshopMode() {
     const params = new URLSearchParams(window.location.search);
-    return params.get("t") === "workshop";
+    return params.get("t") === "workshop" || params.get("t") === "all";
   }
 
   function validateCommodityParam(allCommodities) {
